@@ -19,7 +19,7 @@ namespace GraphicEditor
         }
         public void DrawToImage(Graphics g)
         {
-            Draw(g, Pen.draw_pen, Form1.CoordTransformX, Form1.CoordTransformY);
+            Draw(g, Pen.draw_pen, MainForm.CoordTransformX, MainForm.CoordTransformY);
         }
 
         protected abstract void Draw(Graphics g, Pen p, float cx, float cy);
@@ -70,7 +70,7 @@ namespace GraphicEditor
 
         public override bool Update(float x, float y)
         {
-            if (MathF.Abs(x - Points.Last().X) > Form1.CoordTransformX || MathF.Abs(x - Points.Last().Y) > Form1.CoordTransformY)
+            if (MathF.Abs(x - Points.Last().X) > MainForm.CoordTransformX || MathF.Abs(x - Points.Last().Y) > MainForm.CoordTransformY)
             {
                 Points.Add(new PointF(x, y));
                 return true;
@@ -104,7 +104,7 @@ namespace GraphicEditor
 
         public override bool Update(float x, float y)
         {
-            if (MathF.Abs(x - end.X) > Form1.CoordTransformX || MathF.Abs(y - end.Y) > Form1.CoordTransformY)
+            if (MathF.Abs(x - end.X) > MainForm.CoordTransformX || MathF.Abs(y - end.Y) > MainForm.CoordTransformY)
             {
                 end.X = x;
                 end.Y = y;
@@ -151,7 +151,7 @@ namespace GraphicEditor
         {
             newX -= Location.X;
             newY -= Location.Y;
-            if (MathF.Abs(Width - newX) > Form1.CoordTransformX || MathF.Abs(Height - newY) > Form1.CoordTransformY)
+            if (MathF.Abs(Width - newX) > MainForm.CoordTransformX || MathF.Abs(Height - newY) > MainForm.CoordTransformY)
             {
                 Width = newX;
                 Height = newY;
@@ -170,7 +170,7 @@ namespace GraphicEditor
 
         protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
-            float locX = Location.X, locY = Location.Y, w = Width, h = Height;
+            float locX = MathF.Round(Location.X), locY = MathF.Round(Location.Y), w = MathF.Round(Width), h = MathF.Round(Height);
             if(w < 0)
             {
                 locX += w;

@@ -4,7 +4,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 
 namespace GraphicEditor
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         private enum Tools
         {
@@ -107,7 +107,7 @@ namespace GraphicEditor
         Point ColorLocation = new Point(225, 0);
         Color SelectedColor;
 
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
@@ -425,6 +425,10 @@ namespace GraphicEditor
         private void pictureBox2_MouseUp(object sender, MouseEventArgs e)
         {
             pictureBox2.MouseMove -= new MouseEventHandler(palette_MouseMove);
+            ColorLocation.X = Math.Max(Math.Min(e.X, palette.Width - 1), 0);
+            ColorLocation.Y = Math.Max(Math.Min(e.Y, palette.Height - 1), 0);
+            SelectColor();
+            pictureBox2.Refresh();
         }
 
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)

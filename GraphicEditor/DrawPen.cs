@@ -28,7 +28,7 @@ namespace GraphicEditor
             set
             {
                 size = value;
-                ShowSize = value * Form1.CoordTransformX;
+                ShowSize = value * MainForm.CoordTransformX;
                 draw_pen.Width = value;
             }
         }
