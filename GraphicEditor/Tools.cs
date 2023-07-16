@@ -15,16 +15,18 @@ namespace GraphicEditor
 
         public void DrawToScreen(Graphics g)
         {
-            Draw(g, Pen.show_pen, 1f);
+            Draw(g, Pen.show_pen, 1f, 1f);
         }
         public void DrawToImage(Graphics g)
         {
-            Draw(g, Pen.draw_pen, Form1.CoordTransform);
+            Draw(g, Pen.draw_pen, Form1.CoordTransformX, Form1.CoordTransformY);
         }
 
-        protected abstract void Draw(Graphics g, Pen p, float c);
+        protected abstract void Draw(Graphics g, Pen p, float cx, float cy);
 
         public abstract bool Update(float x, float y);
+
+        public abstract BasicTool Clone();
 
         protected BasicTool(DrawPen pen)
         {
@@ -45,30 +47,40 @@ namespace GraphicEditor
             };
         }
 
-        protected override void Draw(Graphics g, Pen p, float c)
+        protected BrushTool(List<PointF> points, DrawPen pen)
+        : base(pen)
+        {
+            Points = new List<PointF>(points);
+        }
+
+        protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
             PointF[] pts = Points.ToArray();
             for (int i = 0; i < pts.Length; i++)
             {
-                pts[i].X = MathF.Round(pts[i].X / c);
-                pts[i].Y = MathF.Round(pts[i].Y / c);
+                pts[i].X = MathF.Floor(pts[i].X / cx);
+                pts[i].Y = MathF.Floor(pts[i].Y / cy);
             }
             if (Points.Count > 1)
             {
                 g.DrawLines(p, pts);
             }
-            else g.FillEllipse(Pen.brush, pts[0].X - p.Width / 2, pts[0].Y - p.Width / 2, p.Width, p.Width);
+            else g.FillEllipse(Pen.brush, MathF.Floor(pts[0].X - p.Width / 2), MathF.Floor(pts[0].Y - p.Width / 2), p.Width, p.Width);
         }
 
         public override bool Update(float x, float y)
         {
-            if (MathF.Abs(x - Points.Last().X) > Form1.CoordTransform || MathF.Abs(x - Points.Last().Y) > Form1.CoordTransform)
+            if (MathF.Abs(x - Points.Last().X) > Form1.CoordTransformX || MathF.Abs(x - Points.Last().Y) > Form1.CoordTransformY)
             {
                 Points.Add(new PointF(x, y));
                 return true;
             }
             return false;
+        }
 
+        public override BasicTool Clone()
+        {
+            return new BrushTool(Points, Pen.Clone());
         }
     }
 
@@ -83,9 +95,16 @@ namespace GraphicEditor
             start = end = s;
         }
 
+        protected LineTool(PointF start, PointF end, DrawPen pen)
+        : base(pen)
+        {
+            this.start = start;
+            this.end = end;
+        }
+
         public override bool Update(float x, float y)
         {
-            if (MathF.Abs(x - end.X) > Form1.CoordTransform || MathF.Abs(y - end.Y) > Form1.CoordTransform)
+            if (MathF.Abs(x - end.X) > Form1.CoordTransformX || MathF.Abs(y - end.Y) > Form1.CoordTransformY)
             {
                 end.X = x;
                 end.Y = y;
@@ -94,9 +113,16 @@ namespace GraphicEditor
             return false;
         }
 
-        protected override void Draw(Graphics g, Pen p, float c)
+        protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
-            g.DrawLine(p, start.X / c, start.Y / c, end.X / c, end.Y / c);
+            g.DrawLine(p, MathF.Floor(start.X / cx), MathF.Floor(start.Y / cy), MathF.Floor(end.X / cx), MathF.Floor(end.Y / cy));
+        }
+
+        public override BasicTool Clone()
+        {
+            DrawPen clone = Pen.Clone();
+            clone.ToSquareBrush();
+            return new LineTool(start, end, clone);
         }
     }
 
@@ -113,11 +139,19 @@ namespace GraphicEditor
             Width = Height = 0f;
         }
 
+        protected BasicRectangularTool(PointF location, float width, float height, DrawPen pen)
+        : base(pen)
+        {
+            Location = location;
+            Width = width;
+            Height = height;
+        }
+
         public override bool Update(float newX, float newY)
         {
             newX -= Location.X;
             newY -= Location.Y;
-            if (MathF.Abs(Width - newX) > Form1.CoordTransform || MathF.Abs(Height - newY) > Form1.CoordTransform)
+            if (MathF.Abs(Width - newX) > Form1.CoordTransformX || MathF.Abs(Height - newY) > Form1.CoordTransformY)
             {
                 Width = newX;
                 Height = newY;
@@ -132,7 +166,9 @@ namespace GraphicEditor
     {
         public RectangleTool(PointF location, DrawPen pen) : base(location, pen) { }
 
-        protected override void Draw(Graphics g, Pen p, float c)
+        protected RectangleTool(PointF location, float width, float height, DrawPen pen) : base(location, width, height, pen) { }
+
+        protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
             float locX = Location.X, locY = Location.Y, w = Width, h = Height;
             if(w < 0)
@@ -146,25 +182,35 @@ namespace GraphicEditor
                 h *= -1;
             }
 
-            if (MathF.Floor(w / c) < 1.5f * p.Width && MathF.Floor(h / c) == 1.5f * p.Width)
-            {
-                g.DrawRectangle(p, locX / c, locY / c, 1, 1);
-            }
-            else if (MathF.Floor(w / c) == 0) g.DrawLine(p, locX / c, locY / c - p.Width / 2, locX / c, locY / c + h + p.Width / 2);
-            else if (MathF.Floor(h / c) == 0) g.DrawLine(p, locX / c - p.Width / 2, locY / c, locX / c + w + p.Width / 2, locY / c);
-            else g.DrawRectangle(p, locX / c, locY / c, w / c, h / c);
+            if (MathF.Floor(w / cx) == 0 && MathF.Floor(h / cy) == 0) g.DrawRectangle(p, MathF.Floor(locX / cx), MathF.Floor(locY / cy), 1, 1);
+            else if (MathF.Floor(w / cx) == 0) g.DrawLine(p, MathF.Floor(locX / cx), MathF.Floor(locY / cy - p.Width / 2), MathF.Floor(locX / cx), MathF.Floor((locY + h) / cy + p.Width / 2));
+            else if (MathF.Floor(h / cy) == 0) g.DrawLine(p, MathF.Floor(locX / cx - p.Width / 2), MathF.Floor(locY / cy), MathF.Floor((locX + w) / cx + p.Width / 2), MathF.Floor(locY / cy));
+            else g.DrawRectangle(p, MathF.Floor(locX / cx), MathF.Floor(locY / cy), MathF.Floor(w / cx), MathF.Floor(h / cy));
+        }
+
+        public override BasicTool Clone()
+        {
+            DrawPen clone = Pen.Clone();
+            clone.ToSquareBrush();
+            return new RectangleTool(Location, Width, Height, clone);
         }
     }
     public class EllipseTool : BasicRectangularTool
     {
         public EllipseTool(PointF location, DrawPen pen) : base(location, pen) { }
 
-        protected override void Draw(Graphics g, Pen p, float c)
+        protected EllipseTool(PointF location, float width, float height, DrawPen pen) : base(location, width, height, pen) { }
+
+        protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
-            if (MathF.Floor(Width / c) == 0 && MathF.Floor(Height / c) == 0) g.DrawEllipse(p, Location.X / c, Location.Y / c, 1, 1);
-            else if (MathF.Floor(Width / c) == 0) g.DrawLine(p, Location.X / c, Location.Y / c, Location.X / c, Location.Y / c + Height);
-            else if (MathF.Floor(Height / c) == 0) g.DrawLine(p, Location.X / c, Location.Y / c, Location.X / c + Width, Location.Y / c);
-            else g.DrawEllipse(p, Location.X / c, Location.Y / c, Width / c, Height / c);
+            if (MathF.Floor(Width / cx) == 0 && MathF.Floor(Height / cy) == 0) g.DrawEllipse(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), 1, 1);
+            else if (MathF.Floor(Width / cx) == 0) g.DrawLine(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor(Location.X / cx), MathF.Floor((Location.Y + Height) / cy));
+            else if (MathF.Floor(Height / cy) == 0) g.DrawLine(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor((Location.X + Width) / cx), MathF.Floor(Location.Y / cy));
+            else g.DrawEllipse(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor(Width / cx), MathF.Floor(Height / cy));
+        }
+        public override BasicTool Clone()
+        {
+            return new EllipseTool(Location, Width, Height, Pen.Clone());
         }
     }
 }

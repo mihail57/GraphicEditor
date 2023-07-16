@@ -28,12 +28,13 @@ namespace GraphicEditor
             set
             {
                 size = value;
-                ShowSize = value * Form1.CoordTransform;
+                ShowSize = value * Form1.CoordTransformX;
                 draw_pen.Width = value;
             }
         }
 
         private float show_size;
+        [JsonIgnore]
         public float ShowSize
         {
             get { return show_size; }
@@ -44,26 +45,43 @@ namespace GraphicEditor
             }
         }
 
+        [JsonIgnore]
         public Pen show_pen { get; private set; }
 
+        [JsonIgnore]
         public Pen draw_pen { get; private set; }
 
+        [JsonIgnore]
         public Brush brush { get; private set; }
 
-        public DrawPen(Color c, int size, bool round_brush = true)
+        public DrawPen(Color c, int size)
         {
-            show_pen = new(Color.Empty);
-            draw_pen = new(Color.Empty);
-            if (round_brush)
-            {
-                draw_pen.StartCap = show_pen.StartCap = LineCap.Round;
-                draw_pen.EndCap = show_pen.EndCap = LineCap.Round;
-                draw_pen.LineJoin = show_pen.LineJoin = LineJoin.Round;
-                draw_pen.MiterLimit = show_pen.MiterLimit = 0f;
-            }
+            show_pen = new(Color.Empty) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round, MiterLimit = 0f };
+            draw_pen = new(Color.Empty) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round, MiterLimit = 0f };
             Color = c;
             Size = size;
             brush = new SolidBrush(Color);
+        }
+
+        public void ToRoundBrush()
+        {
+            draw_pen.StartCap = show_pen.StartCap = LineCap.Round;
+            draw_pen.EndCap = show_pen.EndCap = LineCap.Round;
+            draw_pen.LineJoin = show_pen.LineJoin = LineJoin.Round;
+            draw_pen.MiterLimit = show_pen.MiterLimit = 0f;
+        }
+
+        public void ToSquareBrush()
+        {
+            draw_pen.StartCap = show_pen.StartCap = LineCap.Flat;
+            draw_pen.EndCap = show_pen.EndCap = LineCap.Flat;
+            draw_pen.LineJoin = show_pen.LineJoin = LineJoin.Miter;
+            draw_pen.MiterLimit = show_pen.MiterLimit = 10f;
+        }
+
+        public DrawPen Clone()
+        {
+            return new DrawPen(color, size);
         }
     }
 }
