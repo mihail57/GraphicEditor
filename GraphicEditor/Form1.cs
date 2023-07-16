@@ -152,8 +152,8 @@ namespace GraphicEditor
             zoomPow = zoomChange = 0;
             zoomFac = 1;
 
-            CoordTransformX = 96 / bmp.HorizontalResolution;
-            CoordTransformY = 96 / bmp.VerticalResolution;
+            CoordTransformX = pictureBox1.CreateGraphics().DpiX / bmp.HorizontalResolution;
+            CoordTransformY = pictureBox1.CreateGraphics().DpiY / bmp.VerticalResolution;
 
             // Check potrait or landscape
             if (bmp.Width > bmp.Height)
