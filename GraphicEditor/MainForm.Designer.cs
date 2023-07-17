@@ -51,6 +51,10 @@
             правкаToolStripMenuItem = new ToolStripMenuItem();
             отменитьToolStripMenuItem = new ToolStripMenuItem();
             panel2 = new Panel();
+            EditPanel = new Panel();
+            apply_btn = new Button();
+            label5 = new Label();
+            numericUpDown2 = new NumericUpDown();
             numericUpDown1 = new NumericUpDown();
             label4 = new Label();
             panel3 = new Panel();
@@ -64,6 +68,8 @@
             statusStrip1.SuspendLayout();
             menuStrip1.SuspendLayout();
             panel2.SuspendLayout();
+            EditPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numericUpDown2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDown1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox2).BeginInit();
             panel4.SuspendLayout();
@@ -250,6 +256,7 @@
             // 
             panel2.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             panel2.BorderStyle = BorderStyle.FixedSingle;
+            panel2.Controls.Add(EditPanel);
             panel2.Controls.Add(numericUpDown1);
             panel2.Controls.Add(label4);
             panel2.Controls.Add(panel3);
@@ -262,6 +269,46 @@
             panel2.Size = new Size(235, 503);
             panel2.TabIndex = 4;
             // 
+            // EditPanel
+            // 
+            EditPanel.Controls.Add(apply_btn);
+            EditPanel.Controls.Add(label5);
+            EditPanel.Controls.Add(numericUpDown2);
+            EditPanel.Location = new Point(9, 427);
+            EditPanel.Name = "EditPanel";
+            EditPanel.Size = new Size(211, 71);
+            EditPanel.TabIndex = 16;
+            // 
+            // apply_btn
+            // 
+            apply_btn.Location = new Point(3, 31);
+            apply_btn.Name = "apply_btn";
+            apply_btn.Size = new Size(81, 23);
+            apply_btn.TabIndex = 16;
+            apply_btn.Text = "Готово";
+            apply_btn.UseVisualStyleBackColor = true;
+            apply_btn.Click += apply_btn_Click;
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(0, 2);
+            label5.Name = "label5";
+            label5.Size = new Size(67, 15);
+            label5.TabIndex = 14;
+            label5.Text = "Вращение:";
+            // 
+            // numericUpDown2
+            // 
+            numericUpDown2.Location = new Point(136, 0);
+            numericUpDown2.Maximum = new decimal(new int[] { 500, 0, 0, 0 });
+            numericUpDown2.Minimum = new decimal(new int[] { 500, 0, 0, int.MinValue });
+            numericUpDown2.Name = "numericUpDown2";
+            numericUpDown2.Size = new Size(49, 23);
+            numericUpDown2.TabIndex = 15;
+            numericUpDown2.TabStop = false;
+            numericUpDown2.ValueChanged += numericUpDown2_ValueChanged;
+            // 
             // numericUpDown1
             // 
             numericUpDown1.Location = new Point(145, 398);
@@ -271,6 +318,7 @@
             numericUpDown1.TabIndex = 13;
             numericUpDown1.TabStop = false;
             numericUpDown1.Value = new decimal(new int[] { 10, 0, 0, 0 });
+            numericUpDown1.ValueChanged += numericUpDown1_ValueChanged;
             // 
             // label4
             // 
@@ -339,7 +387,7 @@
             panel4.Size = new Size(669, 503);
             panel4.TabIndex = 5;
             // 
-            // Form1
+            // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -352,7 +400,7 @@
             DoubleBuffered = true;
             MainMenuStrip = menuStrip1;
             MinimumSize = new Size(900, 526);
-            Name = "Form1";
+            Name = "MainForm";
             Text = "GraphicEditor";
             FormClosing += Form1_FormClosing;
             Load += Form1_Load;
@@ -364,6 +412,9 @@
             menuStrip1.PerformLayout();
             panel2.ResumeLayout(false);
             panel2.PerformLayout();
+            EditPanel.ResumeLayout(false);
+            EditPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numericUpDown2).EndInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDown1).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox2).EndInit();
             panel4.ResumeLayout(false);
@@ -403,5 +454,9 @@
         private ToolStripStatusLabel toolStripStatusPlaceholder;
         private ToolStripStatusLabel toolStripStatusCoords;
         private Button eraser_btn;
+        private Panel EditPanel;
+        private Button apply_btn;
+        private Label label5;
+        private NumericUpDown numericUpDown2;
     }
 }

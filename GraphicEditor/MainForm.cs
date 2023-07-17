@@ -19,45 +19,56 @@ namespace GraphicEditor
             get { return selected; }
             set
             {
+                if (current is IEditable && edit) ApplyChanges();
+
                 selected = value;
                 toolStripStatusToolIcon.Image = icons[(int)value];
                 switch (value)
                 {
                     case Tools.Hand:
                         toolStripStatusToolName.Text = "Ðóêà";
+                        current = null;
                         break;
                     case Tools.Brush:
                         toolStripStatusToolName.Text = "Êèñòü";
                         current.Pen.Color = SelectedColor;
                         current.Pen.ToRoundBrush();
+                        current = new BrushTool(current.Pen);
                         break;
                     case Tools.Line:
                         toolStripStatusToolName.Text = "Ëèíèÿ";
                         current.Pen.Color = SelectedColor;
                         current.Pen.ToSquareBrush();
+                        current = new LineTool(current.Pen);
                         break;
                     case Tools.Rectangle:
                         toolStripStatusToolName.Text = "Ïðÿìîóãîëüíèê";
                         current.Pen.Color = SelectedColor;
                         current.Pen.ToSquareBrush();
+                        current = new RectangleTool(current.Pen);
                         break;
                     case Tools.Ellipse:
                         toolStripStatusToolName.Text = "Ýëëèïñ";
                         current.Pen.Color = SelectedColor;
                         current.Pen.ToRoundBrush();
+                        current = new EllipseTool(current.Pen);
                         break;
                     case Tools.Eraser:
                         toolStripStatusToolName.Text = "Ëàñòèê";
                         current.Pen.Color = Color.White;
                         current.Pen.ToRoundBrush();
+                        current = new BrushTool(current.Pen);
                         break;
                     default:
                         break;
                 }
+
+                if (current is IEditable) EditPanel.Visible = true;
+                else EditPanel.Visible = false;
+
+                apply_btn.Enabled = false;
             }
         }
-
-        private Tools oldMode;
 
         private string fileName;
         private string FileName
@@ -87,6 +98,15 @@ namespace GraphicEditor
 
         private bool translate = false;
         private bool draw = false;
+        private bool edit = false;
+        private bool Edit
+        {
+            get { return edit; }
+            set
+            {
+                apply_btn.Enabled = edit = value;
+            }
+        }
 
         private float mouseX;
         private float mouseY;
@@ -138,7 +158,7 @@ namespace GraphicEditor
             this.Disposed += new EventHandler(Form1_Disposed);
 
             Selected = Tools.Hand;
-            current = new BrushTool(new PointF(0, 0), new DrawPen(Color.Black, 1));
+            current = new BrushTool(new DrawPen(Color.Black, 1));
 
             palette = (Bitmap)pictureBox2.Image;
             pictureBox2.Refresh();
@@ -218,9 +238,6 @@ namespace GraphicEditor
             mouseY = e.Y;
             if (e.Button == MouseButtons.Middle && !draw)
             {
-                oldMode = Selected;
-                Selected = Tools.Hand;
-                hand_btn.Select();
                 activatedBy = e.Button;
 
                 if (!translate)
@@ -230,6 +247,8 @@ namespace GraphicEditor
             }
             else if (e.Button == MouseButtons.Left)
             {
+                if (current is IEditable && edit) ApplyChanges();
+
                 activatedBy = e.Button;
                 float locationX = mouseX / (ratio * zoomFac) - translateX;
                 float locationY = mouseY / (ratio * zoomFac) - translateY;
@@ -243,28 +262,24 @@ namespace GraphicEditor
                         }
                         return;
                     case Tools.Brush:
-                        current = new BrushTool(new PointF(locationX, locationY), current.Pen);
                         brush_btn.Select();
                         break;
                     case Tools.Line:
-                        current = new LineTool(new PointF(locationX, locationY), current.Pen);
                         line_btn.Select();
                         break;
                     case Tools.Rectangle:
-                        current = new RectangleTool(new PointF(locationX, locationY), current.Pen);
                         rectangle_btn.Select();
                         break;
                     case Tools.Ellipse:
-                        current = new EllipseTool(new PointF(locationX, locationY), current.Pen);
                         ellipse_btn.Select();
                         break;
                     case Tools.Eraser:
-                        current = new BrushTool(new PointF(locationX, locationY), current.Pen);
                         eraser_btn.Select();
                         break;
                     default:
                         break;
                 }
+                current.Initialize(locationX, locationY);
                 draw = true;
                 pictureBox1.Refresh();
             }
@@ -295,39 +310,18 @@ namespace GraphicEditor
             if (translate)
             {
                 translate = false;
-                if (e.Button == MouseButtons.Middle)
-                {
-                    Selected = oldMode;
-                    switch (Selected)
-                    {
-                        case Tools.Brush:
-                            brush_btn.Select();
-                            break;
-                        case Tools.Line:
-                            line_btn.Select();
-                            break;
-                        case Tools.Rectangle:
-                            rectangle_btn.Select();
-                            break;
-                        case Tools.Ellipse:
-                            ellipse_btn.Select();
-                            break;
-                        case Tools.Eraser:
-                            eraser_btn.Select();
-                            break;
-                        default:
-                            break;
-                    }
-                }
             }
-            if (draw)
+            else if (draw)
             {
                 draw = false;
-                using (Graphics gfx = Graphics.FromImage(bmp)) current.DrawToImage(gfx);
-                history.Add(current.Clone());
-                saved = false;
-                FileName += "";
-                îòìåíèòüToolStripMenuItem.Enabled = true;
+                if (current is IEditable)
+                {
+                    Edit = true;
+                    îòìåíèòüToolStripMenuItem.Enabled = true;
+                    saved = false;
+                    FileName += "";
+                }
+                else ApplyChanges();
                 pictureBox1.Refresh();
             }
         }
@@ -358,7 +352,7 @@ namespace GraphicEditor
 
             g.DrawImage(bmp, 0, 0);
 
-            if (draw)
+            if (draw || edit)
             {
                 current.DrawToScreen(g);
             }
@@ -404,6 +398,7 @@ namespace GraphicEditor
             ColorLocation.X = Math.Max(Math.Min(e.X, palette.Width - 1), 0);
             ColorLocation.Y = Math.Max(Math.Min(e.Y, palette.Height - 1), 0);
             SelectColor();
+            pictureBox1.Refresh();
             pictureBox2.Refresh();
         }
 
@@ -428,32 +423,15 @@ namespace GraphicEditor
             ColorLocation.X = Math.Max(Math.Min(e.X, palette.Width - 1), 0);
             ColorLocation.Y = Math.Max(Math.Min(e.Y, palette.Height - 1), 0);
             SelectColor();
+            pictureBox1.Refresh();
             pictureBox2.Refresh();
         }
 
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
             current.Pen.Size = Convert.ToInt32(numericUpDown1.Value);
-            switch (Selected)
-            {
-                case Tools.Brush:
-                    brush_btn.Select();
-                    break;
-                case Tools.Line:
-                    line_btn.Select();
-                    break;
-                case Tools.Rectangle:
-                    rectangle_btn.Select();
-                    break;
-                case Tools.Ellipse:
-                    ellipse_btn.Select();
-                    break;
-                case Tools.Eraser:
-                    eraser_btn.Select();
-                    break;
-                default:
-                    break;
-            }
+            ReturnSelection();
+            pictureBox1.Refresh();
         }
 
         private void ñîçäàòüToolStripMenuItem_Click(object sender, EventArgs e)
@@ -555,13 +533,21 @@ namespace GraphicEditor
 
         private void îòìåíèòüToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            saved = false;
-            FileName += "";
-            history.Remove();
+            if (edit)
+            {
+                Edit = false;
+                numericUpDown2.Value = 0;
+            }
+            else
+            {
+                saved = false;
+                FileName += "";
+                history.Remove();
+                bmp.Dispose();
+                bmp = new Bitmap(original);
+                using (Graphics g = Graphics.FromImage(bmp)) history.Save(g);
+            }
             if (history.Length == 0) îòìåíèòüToolStripMenuItem.Enabled = false;
-            bmp.Dispose();
-            bmp = new Bitmap(original);
-            using (Graphics g = Graphics.FromImage(bmp)) history.Save(g);
             pictureBox1.Refresh();
         }
 
@@ -585,6 +571,56 @@ namespace GraphicEditor
                     e.Cancel = true;
                     this.BringToFront();
                 }
+        }
+
+        private void apply_btn_Click(object sender, EventArgs e)
+        {
+            ApplyChanges();
+            ReturnSelection();
+            pictureBox1.Refresh();
+        }
+
+        private void ApplyChanges()
+        {
+            using (Graphics gfx = Graphics.FromImage(bmp)) current.DrawToImage(gfx);
+            history.Add(current.Clone());
+            saved = false;
+            FileName += "";
+            îòìåíèòüToolStripMenuItem.Enabled = true;
+            Edit = false;
+            numericUpDown2.Value = 0;
+        }
+
+        private void numericUpDown2_ValueChanged(object sender, EventArgs e)
+        {
+            numericUpDown2.Value %= 360;
+            (current as IEditable).Rotation = Convert.ToSingle(numericUpDown2.Value);
+            ReturnSelection();
+            pictureBox1.Refresh();
+        }
+
+        private void ReturnSelection()
+        {
+            switch (Selected)
+            {
+                case Tools.Brush:
+                    brush_btn.Select();
+                    break;
+                case Tools.Line:
+                    line_btn.Select();
+                    break;
+                case Tools.Rectangle:
+                    rectangle_btn.Select();
+                    break;
+                case Tools.Ellipse:
+                    ellipse_btn.Select();
+                    break;
+                case Tools.Eraser:
+                    eraser_btn.Select();
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

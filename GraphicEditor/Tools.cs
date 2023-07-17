@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Drawing.Drawing2D;
 
 namespace GraphicEditor
 {
@@ -21,6 +22,8 @@ namespace GraphicEditor
         {
             Draw(g, Pen.draw_pen, MainForm.CoordTransformX, MainForm.CoordTransformY);
         }
+
+        public abstract void Initialize(float x, float y);
 
         protected abstract void Draw(Graphics g, Pen p, float cx, float cy);
 
@@ -38,13 +41,10 @@ namespace GraphicEditor
     {
         protected List<PointF> Points;
 
-        public BrushTool(PointF location, DrawPen pen)
+        public BrushTool(DrawPen pen)
         : base(pen)
         {
-            Points = new List<PointF>()
-            {
-                location
-            };
+            Points = new List<PointF>();
         }
 
         protected BrushTool(List<PointF> points, DrawPen pen)
@@ -82,24 +82,29 @@ namespace GraphicEditor
         {
             return new BrushTool(Points, Pen.Clone());
         }
+
+        public override void Initialize(float x, float y) => Points.Add(new PointF(x, y));
     }
 
-    public class LineTool : BasicTool
+    public class LineTool : BasicTool, IEditable
     {
         private PointF start;
         private PointF end;
 
-        public LineTool(PointF s, DrawPen pen)
+        public float Rotation { get; set; }
+
+        public LineTool(DrawPen pen)
         : base(pen)
         {
-            start = end = s;
+            start = end = new PointF(0f, 0f);
         }
 
-        protected LineTool(PointF start, PointF end, DrawPen pen)
+        protected LineTool(PointF start, PointF end, DrawPen pen, float rot)
         : base(pen)
         {
             this.start = start;
             this.end = end;
+            Rotation = rot;
         }
 
         public override bool Update(float x, float y)
@@ -115,36 +120,56 @@ namespace GraphicEditor
 
         protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
-            g.DrawLine(p, MathF.Floor(start.X / cx), MathF.Floor(start.Y / cy), MathF.Floor(end.X / cx), MathF.Floor(end.Y / cy));
+            using (GraphicsPath g_p = new GraphicsPath())
+            {
+                g_p.AddLine(MathF.Floor(start.X / cx), MathF.Floor(start.Y / cy), MathF.Floor(end.X / cx), MathF.Floor(end.Y / cy));
+                (this as IEditable).ApplyRotation(g_p);
+                g.DrawPath(p, g_p);
+            }
         }
 
         public override BasicTool Clone()
         {
             DrawPen clone = Pen.Clone();
             clone.ToSquareBrush();
-            return new LineTool(start, end, clone);
+            return new LineTool(start, end, clone, Rotation);
+        }
+
+        public override void Initialize(float x, float y)
+        {
+            end.X = start.X = x;
+            end.Y = start.Y = y;
+        }
+
+        void IEditable.ApplyRotation(GraphicsPath g)
+        {
+            float middleX = (start.X + end.X) / 2, middleY = (start.Y + end.Y) / 2;
+            g.Transform((this as IEditable).GetRotationMatrix(middleX, middleY));
         }
     }
 
-    public abstract class BasicRectangularTool : BasicTool
+    public abstract class BasicRectangularTool : BasicTool, IEditable
     {
         protected PointF Location;
         protected float Width;
         protected float Height;
 
-        protected BasicRectangularTool(PointF location, DrawPen pen)
+        public float Rotation { get; set; }
+
+        protected BasicRectangularTool(DrawPen pen)
         : base(pen)
         {
-            Location = location;
+            Location = new PointF(0, 0);
             Width = Height = 0f;
         }
 
-        protected BasicRectangularTool(PointF location, float width, float height, DrawPen pen)
+        protected BasicRectangularTool(PointF location, float width, float height, DrawPen pen, float rot)
         : base(pen)
         {
             Location = location;
             Width = width;
             Height = height;
+            Rotation = rot;
         }
 
         public override bool Update(float newX, float newY)
@@ -160,57 +185,98 @@ namespace GraphicEditor
             }
             return false;
         }
+
+        public override void Initialize(float x, float y)
+        {
+            Location.X = x;
+            Location.Y = y;
+            Width = Height = 0f;
+        }
+
+        void IEditable.ApplyRotation(GraphicsPath g)
+        {
+            float middleX = Location.X + Width / 2, middleY = Location.Y + Height / 2;
+            g.Transform((this as IEditable).GetRotationMatrix(middleX, middleY));
+        }
     }
 
     public class RectangleTool : BasicRectangularTool
     {
-        public RectangleTool(PointF location, DrawPen pen) : base(location, pen) { }
+        public RectangleTool(DrawPen pen) : base(pen) { }
 
-        protected RectangleTool(PointF location, float width, float height, DrawPen pen) : base(location, width, height, pen) { }
+        protected RectangleTool(PointF location, float width, float height, DrawPen pen, float rot) : base(location, width, height, pen, rot) { }
 
         protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
-            float locX = MathF.Round(Location.X), locY = MathF.Round(Location.Y), w = MathF.Round(Width), h = MathF.Round(Height);
-            if(w < 0)
+            using (GraphicsPath g_p = new GraphicsPath())
             {
-                locX += w;
-                w *= -1;
-            }
-            if (h < 0)
-            {
-                locY += h;
-                h *= -1;
-            }
+                float locX = MathF.Round(Location.X), locY = MathF.Round(Location.Y), w = MathF.Round(Width), h = MathF.Round(Height);
+                if (w < 0)
+                {
+                    locX += w;
+                    w *= -1;
+                }
+                if (h < 0)
+                {
+                    locY += h;
+                    h *= -1;
+                }
 
-            if (MathF.Floor(w / cx) == 0 && MathF.Floor(h / cy) == 0) g.DrawRectangle(p, MathF.Floor(locX / cx), MathF.Floor(locY / cy), 1, 1);
-            else if (MathF.Floor(w / cx) == 0) g.DrawLine(p, MathF.Floor(locX / cx), MathF.Floor(locY / cy - p.Width / 2), MathF.Floor(locX / cx), MathF.Floor((locY + h) / cy + p.Width / 2));
-            else if (MathF.Floor(h / cy) == 0) g.DrawLine(p, MathF.Floor(locX / cx - p.Width / 2), MathF.Floor(locY / cy), MathF.Floor((locX + w) / cx + p.Width / 2), MathF.Floor(locY / cy));
-            else g.DrawRectangle(p, MathF.Floor(locX / cx), MathF.Floor(locY / cy), MathF.Floor(w / cx), MathF.Floor(h / cy));
+                if (MathF.Floor(w / cx) == 0 && MathF.Floor(h / cy) == 0) g_p.AddRectangle(new RectangleF(MathF.Floor(locX / cx), MathF.Floor(locY / cy), 1, 1));
+                else if (MathF.Floor(w / cx) == 0) g_p.AddLine(MathF.Floor(locX / cx), MathF.Floor(locY / cy - p.Width / 2), MathF.Floor(locX / cx), MathF.Floor((locY + h) / cy + p.Width / 2));
+                else if (MathF.Floor(h / cy) == 0) g_p.AddLine(MathF.Floor(locX / cx - p.Width / 2), MathF.Floor(locY / cy), MathF.Floor((locX + w) / cx + p.Width / 2), MathF.Floor(locY / cy));
+                else g_p.AddRectangle(new RectangleF(MathF.Floor(locX / cx), MathF.Floor(locY / cy), MathF.Floor(w / cx), MathF.Floor(h / cy)));
+
+                (this as IEditable).ApplyRotation(g_p);
+                g.DrawPath(p, g_p);
+            }
         }
 
         public override BasicTool Clone()
         {
             DrawPen clone = Pen.Clone();
             clone.ToSquareBrush();
-            return new RectangleTool(Location, Width, Height, clone);
+            return new RectangleTool(Location, Width, Height, clone, Rotation);
         }
     }
     public class EllipseTool : BasicRectangularTool
     {
-        public EllipseTool(PointF location, DrawPen pen) : base(location, pen) { }
+        public EllipseTool(DrawPen pen) : base(pen) { }
 
-        protected EllipseTool(PointF location, float width, float height, DrawPen pen) : base(location, width, height, pen) { }
+        protected EllipseTool(PointF location, float width, float height, DrawPen pen, float rot) : base(location, width, height, pen, rot) { }
 
         protected override void Draw(Graphics g, Pen p, float cx, float cy)
         {
-            if (MathF.Floor(Width / cx) == 0 && MathF.Floor(Height / cy) == 0) g.DrawEllipse(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), 1, 1);
-            else if (MathF.Floor(Width / cx) == 0) g.DrawLine(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor(Location.X / cx), MathF.Floor((Location.Y + Height) / cy));
-            else if (MathF.Floor(Height / cy) == 0) g.DrawLine(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor((Location.X + Width) / cx), MathF.Floor(Location.Y / cy));
-            else g.DrawEllipse(p, MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor(Width / cx), MathF.Floor(Height / cy));
+            using (GraphicsPath g_p = new GraphicsPath())
+            {
+                if (MathF.Floor(Width / cx) == 0 && MathF.Floor(Height / cy) == 0) g_p.AddEllipse(MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), 1, 1);
+                else if (MathF.Floor(Width / cx) == 0) g_p.AddLine(MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor(Location.X / cx), MathF.Floor((Location.Y + Height) / cy));
+                else if (MathF.Floor(Height / cy) == 0) g_p.AddLine(MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor((Location.X + Width) / cx), MathF.Floor(Location.Y / cy));
+                else g_p.AddEllipse(MathF.Floor(Location.X / cx), MathF.Floor(Location.Y / cy), MathF.Floor(Width / cx), MathF.Floor(Height / cy));
+
+                (this as IEditable).ApplyRotation(g_p);
+                g.DrawPath(p, g_p);
+            }
         }
         public override BasicTool Clone()
         {
-            return new EllipseTool(Location, Width, Height, Pen.Clone());
+            return new EllipseTool(Location, Width, Height, Pen.Clone(), Rotation);
+        }
+    }
+
+    public interface IEditable
+    {
+        float Rotation { get; set; }
+
+        void ApplyRotation(GraphicsPath g);
+
+        Matrix GetRotationMatrix(float x, float y)
+        {
+            Matrix m = new Matrix();
+            m.Translate(x, y);
+            m.Rotate(Rotation);
+            m.Translate(-x, -y);
+            return m;
         }
     }
 }
