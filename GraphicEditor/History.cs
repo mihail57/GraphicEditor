@@ -10,24 +10,24 @@ namespace GraphicEditor
     {
         private const int MaxHistoryLen = 10;
 
-        private List<BasicTool> history;
+        private LinkedList<BasicTool> history;
 
         public int Length
         {
             get { return history.Count; }
         }
 
-        public History() { history = new List<BasicTool>();}
+        public History() { history = new LinkedList<BasicTool>();}
 
         public void Add(BasicTool basicTool) {
-            if (history.Count > MaxHistoryLen) history.RemoveAt(0);
-            history.Add(basicTool); 
+            if (history.Count > MaxHistoryLen) history.RemoveFirst();
+            history.AddLast(basicTool); 
         }
 
         public BasicTool Remove()
         {
             BasicTool tmp = history.Last();
-            history.RemoveAt(history.Count - 1);
+            history.RemoveLast();
             return tmp;
         }
 

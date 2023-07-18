@@ -34,7 +34,6 @@ namespace GraphicEditor
         }
 
         private float show_size;
-        [JsonIgnore]
         public float ShowSize
         {
             get { return show_size; }
@@ -45,13 +44,10 @@ namespace GraphicEditor
             }
         }
 
-        [JsonIgnore]
         public Pen show_pen { get; private set; }
 
-        [JsonIgnore]
         public Pen draw_pen { get; private set; }
 
-        [JsonIgnore]
         public Brush brush { get; private set; }
 
         public DrawPen(Color c, int size)

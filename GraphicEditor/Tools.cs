@@ -83,7 +83,11 @@ namespace GraphicEditor
             return new BrushTool(Points, Pen.Clone());
         }
 
-        public override void Initialize(float x, float y) => Points.Add(new PointF(x, y));
+        public override void Initialize(float x, float y)
+        {
+            Points.Clear();
+            Points.Add(new PointF(x, y));
+        }
     }
 
     public class LineTool : BasicTool, IEditable

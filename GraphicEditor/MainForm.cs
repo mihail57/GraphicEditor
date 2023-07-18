@@ -190,6 +190,8 @@ namespace GraphicEditor
                 translateX = (pictureBox1.Width * translateRatio - bmp.Width) / 2f;
                 translateY = 0;
             }
+
+            saved = false;
         }
 
         protected void Form1_Disposed(object? sender, EventArgs e)
@@ -252,36 +254,17 @@ namespace GraphicEditor
                 activatedBy = e.Button;
                 float locationX = mouseX / (ratio * zoomFac) - translateX;
                 float locationY = mouseY / (ratio * zoomFac) - translateY;
-                switch (Selected)
+                ReturnSelection();
+                if (Selected == Tools.Hand && !translate)
                 {
-                    case Tools.Hand:
-                        hand_btn.Select();
-                        if (!translate)
-                        {
-                            translate = true;
-                        }
-                        return;
-                    case Tools.Brush:
-                        brush_btn.Select();
-                        break;
-                    case Tools.Line:
-                        line_btn.Select();
-                        break;
-                    case Tools.Rectangle:
-                        rectangle_btn.Select();
-                        break;
-                    case Tools.Ellipse:
-                        ellipse_btn.Select();
-                        break;
-                    case Tools.Eraser:
-                        eraser_btn.Select();
-                        break;
-                    default:
-                        break;
+                    translate = true;
                 }
-                current.Initialize(locationX, locationY);
-                draw = true;
-                pictureBox1.Refresh();
+                else
+                {
+                    draw = true;
+                    current.Initialize(locationX, locationY);
+                    pictureBox1.Refresh();
+                }
             }
         }
 
@@ -300,8 +283,12 @@ namespace GraphicEditor
             float locationX = mouseX / (ratio * zoomFac) - translateX;
             float locationY = mouseY / (ratio * zoomFac) - translateY;
             toolStripStatusCoords.Text = MathF.Floor(locationX / CoordTransformX).ToString() + ", " + MathF.Floor(locationY / CoordTransformY).ToString();
-            if (draw && current.Update(locationX, locationY))
-                pictureBox1.Refresh();
+
+            if (draw)
+            {
+                if (current.Update(locationX, locationY))
+                    pictureBox1.Refresh();
+            }
         }
 
         protected void pictureBox1_MouseUp(object sender, MouseEventArgs e)
