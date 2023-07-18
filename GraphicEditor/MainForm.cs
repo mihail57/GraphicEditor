@@ -510,6 +510,12 @@ namespace GraphicEditor
 
         private void SaveFile()
         {
+            if (current is IEditable && edit)
+            {
+                ApplyChanges();
+                pictureBox1.Refresh();
+            }
+
             string extension = Path.GetExtension(filePath).ToLower();
             ImageFormat imf = ImageFormat.Bmp;
             if (extension == ".gif") imf = ImageFormat.Gif;
